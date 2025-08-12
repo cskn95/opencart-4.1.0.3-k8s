@@ -1,0 +1,19 @@
+# Speed up docker builds by ignoring dev/runtime files
+.git
+.gitignore
+**/.DS_Store
+**/.idea/
+**/.vscode/
+**/.cache/
+**/.php-cs-fixer.cache
+
+# Runtime artifacts under upload
+upload/image/cache/
+upload/system/storage/cache/
+upload/system/storage/logs/
+upload/system/storage/session/
+upload/system/storage/backup/
+upload/system/storage/upload/
+upload/install.lock
+
+# Keep vendor included (image copies upload/ and doesn't run composer)

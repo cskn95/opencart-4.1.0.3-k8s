@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: /snap/kompose/19/kompose-linux-amd64 convert
+    kompose.version: 1.21.0 (992df58d8)
+  labels:
+    io.kompose.service: opencart
+  name: opencart
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: opencart
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: /snap/kompose/19/kompose-linux-amd64 convert
+        kompose.version: 1.21.0 (992df58d8)
+      labels:
+        io.kompose.service: opencart
+    spec:
+      containers:
+      - name: opencart
+        image: opencart-4103-opencart:k8s
+        imagePullPolicy: IfNotPresent
+        args:
+        - bash
+        - -ceu
+        - |-
+          # If DB isn't initialized, ensure installer will run by removing lock
+          if ! php -r '$m=new mysqli("mysql","root","opencart","opencart",3306); if($m->connect_error){exit(2);} $r=$m->query("SHOW TABLES LIKE \"oc_store\""); exit(($r && $r->num_rows>0)?0:1);'; then
+            rm -f /var/www/html/install.lock
+          fi
+
+          if [ ! -f /var/www/html/install.lock ]; then
+            wait-for-it mysql:3306 -t 60
+            php /var/www/html/install/cli_install.php install \
+              --username admin \
+              --password admin \
+              --email email@example.com \
+              --http_server http://localhost:30080/ \
+              --db_driver mysqli \
+              --db_hostname mysql \
+              --db_username root \
+              --db_password opencart \
+              --db_database opencart \
+              --db_port 3306 \
+              --db_prefix oc_
+            touch /var/www/html/install.lock
+          fi
+
+          exec apache2-foreground
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+      restartPolicy: Always
+      serviceAccountName: ""
+    # no volumes; serve files from the image
+status: {}
